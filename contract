@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "hardhat/console.sol";
+
+contract degentoken is ERC20, Ownable, ERC20Burnable {
+    event LogMessage(string message);
+
+    struct Watch {
+        string name;
+        uint256 rate;
+        uint256 quantity;
+    }
+
+    mapping(string => Watch) public watches;
+
+    constructor() ERC20("Degen", "DGN") Ownable(msg.sender) {
+        watches["Rolex"] = Watch("Rolex", 100, 10);
+        watches["Casio"] = Watch("Casio", 50, 20);
+        watches["Omega"] = Watch("Omega", 40, 15);
+        watches["Seiko"] = Watch("Seiko", 30, 25);
+    }
+
+    function mintTokens(address site, uint256 aggregate) public onlyOwner {
+        _mint(site, aggregate);
+    }
+
+    function burnTokens(uint256 aggregate) public payable {
+        require(balanceOf(msg.sender) >= aggregate, "INSUFFICIENT FUNDS!!");
+        _burn(msg.sender, aggregate);
+        emit LogMessage("Burned tokens");
+    }
+
+    function transferTokens(address recipient, uint256 aggregate) external {
+        require(balanceOf(msg.sender) >= aggregate, "INSUFFICIENT FUNDS!!");
+        _transfer(msg.sender, recipient, aggregate);
+    }
+
+    function redeemWatch(string memory watchName, uint256 index) external payable {
+        require(bytes(watchName).length > 0, "Watch name cannot be empty");
+        require(index > 0, "Index must be greater than zero");
+        require(balanceOf(msg.sender) >= watches[watchName].rate * index, "INSUFFICIENT FUNDS!!");
+        
+        Watch storage watch = watches[watchName];
+        require(watch.quantity >= index, "Insufficient watch quantity");
+
+        _burn(msg.sender, watch.rate * index);
+        watch.quantity -= index;
+
+        emit LogMessage("Redeemed watch");
+    }
+}
